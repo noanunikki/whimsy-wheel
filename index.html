@@ -1,0 +1,714 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#FFD60A">
+<meta name="description" content="Decision wheel, coin flip and dice roller.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<title>Whimsy Wheel</title>
+<style>
+:root{
+  --paper:#FFF4D8; --card:#FFFFFF; --ink:#141414; --on:#141414;
+  --pink:#FF4F9A; --yellow:#FFD60A; --blue:#3A86FF; --green:#2BD97C; --orange:#FF7A1A; --purple:#9B5DE5;
+  --accent:var(--pink);
+  --font:"Arial Black","Avenir Next Condensed","Helvetica Neue",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{--paper:#15120F; --card:#241F1A; --ink:#F6EFDD}
+}
+body[data-tab=wheel]{--accent:var(--pink)}
+body[data-tab=coin]{--accent:var(--yellow)}
+body[data-tab=dice]{--accent:var(--green)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{background-color:var(--paper);
+  background-image:radial-gradient(color-mix(in srgb,var(--ink) 16%,transparent) 1.5px,transparent 1.6px);
+  background-size:22px 22px;color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-weight:600;
+  display:flex;justify-content:center;overscroll-behavior:none}
+#app{width:100%;max-width:480px;height:100dvh;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}
+/* header */
+header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px}
+.logo{display:flex;align-items:center;gap:8px;font-family:var(--font);font-weight:900;line-height:1}
+.logo .l1{font-size:27px;letter-spacing:-1px;text-shadow:3px 3px 0 var(--accent)}
+.logo .l2{font-size:12px;letter-spacing:.06em;background:var(--accent);color:var(--on);border:3px solid var(--ink);
+  border-radius:8px;padding:4px 7px;transform:rotate(-5deg);box-shadow:3px 3px 0 var(--ink)}
+.tools{display:flex;gap:10px}
+.icon-btn{width:44px;height:44px;border:3px solid var(--ink);background:var(--card);color:var(--ink);border-radius:12px;cursor:pointer;
+  display:grid;place-items:center;box-shadow:3px 3px 0 var(--ink);transition:transform .08s,box-shadow .08s}
+.icon-btn:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--ink)}
+.icon-btn svg,nav svg{width:22px;height:22px;fill:currentColor}
+/* tabs */
+nav{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:4px 16px 12px}
+nav button{border:3px solid var(--ink);background:var(--card);color:var(--ink);border-radius:14px;padding:10px 0;cursor:pointer;
+  font-family:var(--font);font-weight:900;font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+  display:flex;align-items:center;justify-content:center;gap:7px;transition:transform .1s,box-shadow .1s,background .15s}
+nav button.on{background:var(--accent);color:var(--on);box-shadow:4px 4px 0 var(--ink);transform:translate(-2px,-2px)}
+main{flex:1;min-height:0;position:relative}
+.page{position:absolute;inset:0;display:none;flex-direction:column;padding:6px 16px 14px}
+.page.active{display:flex}
+button:focus-visible,canvas:focus-visible,#coin:focus-visible{outline:4px solid var(--blue);outline-offset:3px}
+/* buttons */
+button.btn{height:58px;border-radius:16px;border:3px solid var(--ink);background:var(--accent);color:var(--on);
+  font-family:var(--font);font-weight:900;font-size:18px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;padding:0 22px;
+  box-shadow:5px 5px 0 var(--ink);transition:transform .08s,box-shadow .08s}
+button.btn:active{transform:translate(5px,5px);box-shadow:0 0 0 var(--ink)}
+button.btn:disabled{opacity:.65;transform:translate(3px,3px);box-shadow:2px 2px 0 var(--ink)}
+button.btn.outline{background:var(--card);color:var(--ink);font-size:12px;letter-spacing:.04em;white-space:nowrap;padding:0 10px}
+.row{display:flex;gap:14px}
+/* wheel */
+#wheelWrap{flex:1;min-height:0;position:relative}
+#wheel{position:absolute;inset:0;width:100%;height:100%;cursor:pointer;touch-action:manipulation}
+#wheelResult{text-align:center;font-family:var(--font);font-weight:900;font-size:22px;text-transform:uppercase;letter-spacing:.02em;
+  margin:10px 4px 12px;padding:10px 12px;min-height:56px;display:grid;place-items:center;
+  background:var(--card);border:3px solid var(--ink);border-radius:14px;box-shadow:5px 5px 0 var(--ink);overflow-wrap:anywhere}
+#opts{display:flex;align-items:center;justify-content:space-between;min-height:38px;margin-bottom:10px}
+#opts label{display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:800;font-size:13px;padding:4px 0}
+#opts input{appearance:none;-webkit-appearance:none;width:24px;height:24px;margin:0;border:3px solid var(--ink);border-radius:7px;
+  background:var(--card);display:grid;place-content:center;cursor:pointer}
+#opts input:checked{background:var(--accent)}
+#opts input:checked::after{content:"✓";font-weight:900;color:var(--on);font-size:16px;line-height:1}
+.pop{animation:pop .4s cubic-bezier(.3,1.7,.5,1)}
+@keyframes pop{from{transform:scale(.6) rotate(-4deg)}to{transform:scale(1) rotate(0)}}
+/* coin */
+.stage{flex:1;display:grid;place-items:center;min-height:0;position:relative}
+.stage::before{content:"";position:absolute;left:50%;top:50%;width:min(300px,82vw);aspect-ratio:1;transform:translate(-50%,-52%);
+  border-radius:50%;border:3px solid var(--ink);box-shadow:6px 6px 0 var(--ink);
+  background:repeating-conic-gradient(var(--blue) 0 9deg,color-mix(in srgb,var(--blue) 55%,#fff) 9deg 18deg)}
+.coinWrap{position:relative;width:min(200px,54vw);aspect-ratio:1;perspective:900px}
+#coinShadow{position:absolute;left:8%;right:8%;bottom:-30px;height:24px;border-radius:50%;
+  background:radial-gradient(ellipse at center,#000b,#0000 70%)}
+#coin{position:absolute;inset:0;border-radius:50%;transform-style:preserve-3d;cursor:pointer;user-select:none;touch-action:manipulation}
+#coin .rim{position:absolute;inset:0;border-radius:50%;background:#b97c00}
+#coin .rim:nth-child(odd){background:#dca00c}
+#coin .face{position:absolute;inset:0;border-radius:50%;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+#coin .face svg{width:100%;height:100%;display:block;border-radius:50%}
+#coin .front{transform:translateZ(6px)}
+#coin .back{transform:rotateY(180deg) translateZ(6px)}
+#coin .shine{position:absolute;inset:0;border-radius:50%;pointer-events:none;
+  background:linear-gradient(115deg,transparent 32%,rgba(255,255,255,.55) 48%,transparent 62%);
+  background-size:260% 100%;background-position:var(--sx,15%) 0}
+#coinStats{align-self:center;padding:7px 16px;margin:6px 0 10px;background:var(--card);border:3px solid var(--ink);border-radius:999px;
+  box-shadow:3px 3px 0 var(--ink);font-family:var(--font);font-weight:900;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+#coinBar{height:18px;border:3px solid var(--ink);border-radius:999px;background:var(--card);overflow:hidden;margin:0 14px 16px}
+#coinBar span{display:block;height:100%;width:50%;background:var(--yellow);border-right:3px solid var(--ink);transition:width .4s}
+/* dice */
+.seg{display:flex;gap:8px;margin-bottom:12px}
+.seg button{flex:1;height:46px;border:3px solid var(--ink);border-radius:12px;background:var(--card);color:var(--ink);cursor:pointer;
+  font-family:var(--font);font-weight:900;font-size:14px;transition:transform .08s,box-shadow .08s}
+.seg button.on{background:var(--accent);color:var(--on);box-shadow:3px 3px 0 var(--ink);transform:translate(-1px,-1px)}
+#diceArea{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center}
+#diceRow{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.die{border-radius:20px;background:#FFF8E6;color:#141414;border:4px solid #141414;display:grid;place-items:center;
+  font-family:var(--font);font-size:32px;font-weight:900;box-shadow:6px 6px 0 var(--ink)}
+.die.pips{grid-template:repeat(3,1fr)/repeat(3,1fr);padding:14%;place-items:center}
+.pip{width:76%;aspect-ratio:1;border-radius:50%;background:#141414}
+#diceTotal{margin-top:22px;min-height:52px;padding:8px 20px;font-family:var(--font);font-size:22px;font-weight:900;text-transform:uppercase;
+  background:var(--card);border:3px solid var(--ink);border-radius:14px;box-shadow:5px 5px 0 var(--ink)}
+#diceTotal:empty{visibility:hidden}
+/* ticker */
+.ticker{overflow:hidden;white-space:nowrap;border-top:3px solid var(--ink);background:var(--accent);color:var(--on);
+  padding:7px 0 calc(7px + env(safe-area-inset-bottom));font-family:var(--font);font-weight:900;font-size:12px;letter-spacing:.16em}
+.ticker .track{display:inline-flex;animation:tick 22s linear infinite}
+@keyframes tick{to{transform:translateX(-50%)}}
+/* dialogs */
+dialog{border:3px solid var(--ink);border-radius:20px;background:var(--card);color:var(--ink);padding:22px;width:min(90vw,400px);
+  max-height:80dvh;box-shadow:8px 8px 0 var(--ink)}
+dialog::backdrop{background:rgba(0,0,0,.55)}
+dialog h2{font-family:var(--font);font-size:22px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;margin:0 0 14px}
+dialog textarea{width:100%;min-height:170px;border:3px solid var(--ink);border-radius:12px;background:var(--paper);color:var(--ink);
+  font-size:16px;font-weight:600;font-family:inherit;padding:12px;resize:vertical}
+.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap}
+.actions .grow{margin-right:auto}
+.text-btn{border:3px solid var(--ink);background:var(--card);color:var(--ink);font-family:var(--font);font-weight:900;font-size:11px;
+  letter-spacing:.08em;text-transform:uppercase;padding:9px 12px;border-radius:10px;cursor:pointer;box-shadow:3px 3px 0 var(--ink);
+  transition:transform .08s,box-shadow .08s}
+.text-btn:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--ink)}
+.text-btn.hot{background:var(--accent);color:var(--on)}
+.list{list-style:none;margin:0;padding:0;overflow:auto;max-height:50dvh}
+.list li{padding:12px 4px;border-bottom:2px dashed color-mix(in srgb,var(--ink) 35%,transparent);font-weight:800}
+.list li small{display:block;color:color-mix(in srgb,var(--ink) 60%,transparent);margin-top:2px;font-weight:600}
+.list button{width:100%;text-align:left;background:none;border:0;border-bottom:2px dashed color-mix(in srgb,var(--ink) 35%,transparent);
+  color:var(--ink);font-size:16px;font-weight:800;font-family:inherit;padding:14px 4px;cursor:pointer}
+.list button:active{background:var(--accent);color:var(--on)}
+#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:12px 20px;
+  border-radius:12px;border:3px solid var(--ink);opacity:0;transition:opacity .2s;pointer-events:none;font-size:14px;font-weight:800;z-index:5}
+#toast.show{opacity:1}
+#fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:4}
+@media (prefers-reduced-motion:reduce){.pop{animation:none}.ticker .track{animation:none}}
+</style>
+</head>
+<body data-tab="wheel">
+<div id="app">
+  <header>
+    <div class="logo"><span class="l1">WHIMSY</span><span class="l2">WHEEL!</span></div>
+    <div class="tools">
+      <button class="icon-btn" id="soundBtn" aria-label="Sound on" title="Sound"></button>
+      <button class="icon-btn" id="historyBtn" aria-label="History" title="History">
+        <svg viewBox="0 0 24 24"><path d="M13,3a9,9 0,0 0,-9 9H1l3.89,3.89 0.07,0.14L9,12H6c0,-3.87 3.13,-7 7,-7s7,3.13 7,7 -3.13,7 -7,7c-1.93,0 -3.68,-0.79 -4.94,-2.06l-1.42,1.42C8.27,19.99 10.51,21 13,21c4.97,0 9,-4.03 9,-9s-4.03,-9 -9,-9zM12,8v5l4.28,2.54 0.72,-1.21 -3.5,-2.08V8H12z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <nav>
+    <button data-tab="wheel" class="on"><svg viewBox="0 0 24 24"><path fill-rule="evenodd" d="M12,2a10,10 0,1 0,0 20a10,10 0,1 0,0 -20zM12,4a8,8 0,1 1,0 16a8,8 0,1 1,0 -16z"/><path d="M11,4h2v16h-2zM4,11h16v2H4z"/><circle cx="12" cy="12" r="2.5"/></svg>Wheel</button>
+    <button data-tab="coin"><svg viewBox="0 0 24 24"><path fill-rule="evenodd" d="M12,2a10,10 0,1 0,0 20a10,10 0,1 0,0 -20zM12,4a8,8 0,1 1,0 16a8,8 0,1 1,0 -16z"/><circle cx="12" cy="12" r="4.5"/></svg>Coin</button>
+    <button data-tab="dice"><svg viewBox="0 0 24 24"><path fill-rule="evenodd" d="M5,3h14a2,2 0,0 1,2 2v14a2,2 0,0 1,-2 2H5a2,2 0,0 1,-2 -2V5a2,2 0,0 1,2 -2zM5,5v14h14V5H5z"/><circle cx="8.5" cy="8.5" r="1.5"/><circle cx="15.5" cy="15.5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="15.5" cy="8.5" r="1.5"/><circle cx="8.5" cy="15.5" r="1.5"/></svg>Dice</button>
+  </nav>
+
+  <main>
+    <section class="page active" id="page-wheel">
+      <div id="wheelWrap"><canvas id="wheel" tabindex="0" role="button" aria-label="Decision wheel. Press to spin."></canvas></div>
+      <div id="wheelResult" aria-live="polite">Tap SPIN to decide</div>
+      <div id="opts">
+        <label><input type="checkbox" id="rmChk"> Remove winner after spin</label>
+        <button class="text-btn" id="restoreBtn" hidden></button>
+      </div>
+      <div class="row">
+        <button class="btn outline" id="editBtn" style="flex:1">Edit options</button>
+        <button class="btn" id="spinBtn" style="flex:1.4">SPIN</button>
+      </div>
+    </section>
+
+    <section class="page" id="page-coin">
+      <div class="stage"><div class="coinWrap">
+        <div id="coinShadow"></div>
+        <div id="coin" tabindex="0" role="button" aria-label="Coin. Press to flip.">
+          <div class="face front"></div><div class="face back"></div>
+        </div>
+      </div></div>
+      <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+        <radialGradient id="cGold" cx=".35" cy=".28" r=".85"><stop offset="0" stop-color="#fff6c2"/><stop offset=".35" stop-color="#ffd84a"/><stop offset=".75" stop-color="#f0a800"/><stop offset="1" stop-color="#c47d00"/></radialGradient>
+        <linearGradient id="cEdge" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff2a8"/><stop offset="1" stop-color="#b97a00"/></linearGradient>
+        <radialGradient id="cField" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#ffe27a"/><stop offset="1" stop-color="#eaa510"/></radialGradient>
+        <linearGradient id="cRaised" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff0a0"/><stop offset="1" stop-color="#e3a410"/></linearGradient>
+        <filter id="cEmboss" x="-10%" y="-10%" width="120%" height="120%">
+          <feDropShadow dx="0" dy="1.2" stdDeviation=".6" flood-color="#fff6c8" flood-opacity=".85"/>
+          <feDropShadow dx="0" dy="-.8" stdDeviation=".5" flood-color="#5a3300" flood-opacity=".6"/>
+        </filter>
+        <path id="arcTop" d="M 42,100 A 58,58 0 0 1 158,100"/>
+        <path id="arcBot" d="M 34,100 A 66,66 0 0 0 166,100"/>
+      </defs></svg>
+      <div id="coinStats"></div>
+      <div id="coinBar"><span></span></div>
+      <button class="btn" id="flipBtn">FLIP</button>
+    </section>
+
+    <section class="page" id="page-dice">
+      <div class="seg" id="diceType"></div>
+      <div class="seg" id="diceCount"></div>
+      <div id="diceArea"><div id="diceRow"></div><div id="diceTotal" aria-live="polite"></div></div>
+      <button class="btn" id="rollBtn">ROLL</button>
+    </section>
+  </main>
+
+  <div class="ticker" aria-hidden="true"><div class="track">
+    <span>SPIN IT ✦ FLIP IT ✦ ROLL IT ✦ SPIN IT ✦ FLIP IT ✦ ROLL IT ✦ SPIN IT ✦ FLIP IT ✦ ROLL IT ✦ SPIN IT ✦ FLIP IT ✦ ROLL IT ✦&nbsp;</span>
+    <span>SPIN IT ✦ FLIP IT ✦ ROLL IT ✦ SPIN IT ✦ FLIP IT ✦ ROLL IT ✦ SPIN IT ✦ FLIP IT ✦ ROLL IT ✦ SPIN IT ✦ FLIP IT ✦ ROLL IT ✦&nbsp;</span>
+  </div></div>
+</div>
+
+<canvas id="fx"></canvas>
+
+<dialog id="editDlg">
+  <h2>Wheel options</h2>
+  <textarea id="optInput" placeholder="One option per line (2–24)"></textarea>
+  <div class="actions">
+    <button class="text-btn grow" id="presetsBtn">Presets</button>
+    <button class="text-btn" id="shuffleBtn">Shuffle</button>
+    <button class="text-btn" id="editCancel">Cancel</button>
+    <button class="text-btn hot" id="editSave">Save</button>
+  </div>
+</dialog>
+<dialog id="presetDlg">
+  <h2>Presets</h2>
+  <div class="list" id="presetList"></div>
+  <div class="actions"><button class="text-btn hot" id="presetClose">Close</button></div>
+</dialog>
+<dialog id="histDlg">
+  <h2>History</h2>
+  <ul class="list" id="histList"></ul>
+  <div class="actions">
+    <button class="text-btn grow" id="histClear">Clear all</button>
+    <button class="text-btn hot" id="histClose">Close</button>
+  </div>
+</dialog>
+<div id="toast"></div>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const store = {
+  get(k, d){ try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const speed = reduceMotion ? 0.4 : 1;
+const buzz = (ms) => { try { if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate(ms); } catch {} };
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const toast = (msg) => { const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toast.id); toast.id = setTimeout(() => t.classList.remove("show"), 1800); };
+const popAnim = (el) => { if (reduceMotion) return; el.classList.remove("pop"); void el.offsetWidth; el.classList.add("pop"); };
+
+/* ---------------- sound (Web Audio, no files) ---------------- */
+let audio = null;
+const snd = { on: store.get("sound", true) };
+function actx(){
+  if (!audio){ try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch {} }
+  if (audio && audio.state === "suspended") audio.resume();
+  return audio;
+}
+function tone(freq, dur = .06, type = "square", vol = .04, when = 0, slideTo){
+  if (!snd.on) return;
+  const a = actx(); if (!a) return;
+  const t = a.currentTime + when, o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t);
+  if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + .02);
+}
+const sfx = {
+  tick:   () => tone(850 + Math.random() * 120, .03, "square", .03),
+  win:    () => [523, 659, 784, 1047].forEach((f, i) => tone(f, .2, "triangle", .07, i * .09)),
+  clink:  () => { tone(2400, .4, "sine", .06, 0, 1900); tone(3600, .3, "sine", .03); },
+  whoosh: () => tone(300, .5, "sawtooth", .02, 0, 900),
+  rattle: () => tone(120 + Math.random() * 220, .05, "sawtooth", .04),
+  thud:   () => tone(140, .15, "sine", .1, 0, 60)
+};
+const ICON_ON = '<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>';
+const ICON_OFF = '<svg viewBox="0 0 24 24"><path d="M16.5 12A4.5 4.5 0 0 0 14 7.97v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51A8.8 8.8 0 0 0 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06a8.99 8.99 0 0 0 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>';
+function paintSound(){ $("soundBtn").innerHTML = snd.on ? ICON_ON : ICON_OFF; $("soundBtn").setAttribute("aria-label", snd.on ? "Sound on" : "Sound off"); }
+$("soundBtn").onclick = () => { snd.on = !snd.on; store.set("sound", snd.on); paintSound(); if (snd.on) sfx.tick(); toast(snd.on ? "Sound on" : "Sound off"); };
+paintSound();
+
+/* ---------------- confetti ---------------- */
+const fx = $("fx"), fctx = fx.getContext("2d");
+let parts = [], fxRunning = false;
+function fxResize(){ const d = window.devicePixelRatio || 1; fx.width = innerWidth * d; fx.height = innerHeight * d; fctx.setTransform(d, 0, 0, d, 0, 0); }
+addEventListener("resize", fxResize); fxResize();
+function confetti(x, y){
+  if (reduceMotion) return;
+  const colors = ["#FF4F9A","#FFD60A","#3A86FF","#2BD97C","#FF7A1A","#9B5DE5","#00C2D1"];
+  for (let i = 0; i < 110; i++){
+    const a = Math.random() * Math.PI * 2, v = 4 + Math.random() * 9;
+    parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 6, s: 5 + Math.random() * 6, r: Math.random() * 6, vr: (Math.random() - .5) * .4,
+      c: colors[i % colors.length], life: 1 });
+  }
+  if (!fxRunning){ fxRunning = true; requestAnimationFrame(fxFrame); }
+}
+function fxFrame(){
+  fctx.clearRect(0, 0, innerWidth, innerHeight);
+  parts = parts.filter((p) => p.life > 0 && p.y < innerHeight + 20);
+  for (const p of parts){
+    p.vy += .32; p.vx *= .99; p.x += p.vx; p.y += p.vy; p.r += p.vr; p.life -= .006;
+    fctx.save(); fctx.translate(p.x, p.y); fctx.rotate(p.r); fctx.globalAlpha = Math.max(0, Math.min(1, p.life * 2));
+    fctx.fillStyle = p.c; fctx.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2); fctx.restore();
+  }
+  if (parts.length) requestAnimationFrame(fxFrame); else { fxRunning = false; fctx.clearRect(0, 0, innerWidth, innerHeight); }
+}
+
+/* ---------------- history ---------------- */
+const history = {
+  all: () => store.get("history", []),
+  add(kind, text){ store.set("history", [{ k: kind, t: text, ts: Date.now() }, ...this.all()].slice(0, 50)); },
+  clear: () => store.set("history", [])
+};
+function ago(ts){
+  const s = Math.max(0, (Date.now() - ts) / 1000);
+  if (s < 60) return "just now";
+  if (s < 3600) return Math.floor(s / 60) + " min ago";
+  if (s < 86400) return Math.floor(s / 3600) + " h ago";
+  return Math.floor(s / 86400) + " d ago";
+}
+function showHistory(){
+  const list = $("histList"), items = history.all();
+  list.innerHTML = "";
+  if (!items.length){ const li = document.createElement("li"); li.textContent = "Nothing yet. Spin, flip or roll something!"; list.appendChild(li); }
+  items.forEach((e) => {
+    const li = document.createElement("li");
+    li.textContent = e.k + "  " + e.t;
+    const s = document.createElement("small"); s.textContent = ago(e.ts); li.appendChild(s);
+    list.appendChild(li);
+  });
+  if (!$("histDlg").open) $("histDlg").showModal();
+}
+$("historyBtn").onclick = showHistory;
+$("histClose").onclick = () => $("histDlg").close();
+$("histClear").onclick = () => {
+  history.clear();
+  store.set("heads", 0); store.set("tails", 0); updateCoinStats();   // coin stats are part of the history
+  showHistory(); toast("History and coin stats cleared");
+};
+
+/* ---------------- tabs ---------------- */
+let tab = "wheel";
+document.querySelectorAll("nav button").forEach((b) => b.onclick = () => selectTab(b.dataset.tab));
+function selectTab(t){
+  tab = t;
+  document.querySelectorAll("nav button").forEach((b) => b.classList.toggle("on", b.dataset.tab === t));
+  document.querySelectorAll(".page").forEach((p) => p.classList.toggle("active", p.id === "page-" + t));
+  document.body.dataset.tab = t;
+  store.set("tab", t);
+  if (t === "wheel") resizeWheel();
+}
+// Keyboard: Space / Enter does the main action of the current tab.
+document.addEventListener("keydown", (e) => {
+  if (document.querySelector("dialog[open]") || e.ctrlKey || e.metaKey || e.altKey) return;
+  const tag = e.target.tagName;
+  if (tag === "BUTTON" || tag === "TEXTAREA" || tag === "INPUT" || e.target.id === "wheel" || e.target.id === "coin") return;
+  if (e.key === " " || e.key === "Enter"){ e.preventDefault(); ({ wheel: spin, coin: flipCoin, dice: rollDice })[tab](); }
+  else if (e.key === "1") selectTab("wheel"); else if (e.key === "2") selectTab("coin"); else if (e.key === "3") selectTab("dice");
+});
+
+/* ---------------- wheel ---------------- */
+const DEFAULT_OPTIONS = ["Pizza", "Burger", "Sushi", "Tacos", "Salad", "Pasta"];
+const PRESETS = {
+  "🍕 What to eat": ["Pizza","Burger","Sushi","Tacos","Salad","Pasta","Ramen","Kebab"],
+  "✅ Yes or no": ["Yes","No"],
+  "🎬 Movie night": ["Comedy","Thriller","Sci-fi","Horror","Animation","Drama"],
+  "🔥 Dares": ["10 push-ups","Sing a song","Dance for 30 s","Tell a joke","Drink water","Do a plank"],
+  "👥 Who goes first?": ["Player 1","Player 2","Player 3","Player 4"],
+  "🔢 Numbers 1–10": Array.from({length:10}, (_, i) => String(i + 1))
+};
+const PALETTE = ["#FF4F9A","#FFD60A","#3A86FF","#2BD97C","#FF7A1A","#9B5DE5","#00C2D1","#FF5C5C"];
+// the last slice must not share a colour with the first one
+const sliceColor = (i, n) => (n > 1 && i === n - 1 && i % PALETTE.length === 0) ? PALETTE[3] : PALETTE[i % PALETTE.length];
+const theme = { ink: "#141414", card: "#ffffff", paper: "#FFF4D8" };
+function readTheme(){
+  const cs = getComputedStyle(document.documentElement);
+  theme.ink = cs.getPropertyValue("--ink").trim() || theme.ink;
+  theme.card = cs.getPropertyValue("--card").trim() || theme.card;
+  theme.paper = cs.getPropertyValue("--paper").trim() || theme.paper;
+}
+readTheme();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { readTheme(); drawWheel(); });
+let options = store.get("options", DEFAULT_OPTIONS);
+if (!Array.isArray(options) || options.length < 2) options = DEFAULT_OPTIONS;
+let removed = store.get("removed", []);
+if (!Array.isArray(removed)) removed = [];
+
+const canvas = $("wheel"), ctx = canvas.getContext("2d");
+let angle = 0, spinning = false, lastIdx = -1, W = 0, H = 0, win = -1;
+
+function resizeWheel(){
+  const r = canvas.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  W = r.width; H = r.height;
+  if (!W || !H) return;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  drawWheel();
+}
+addEventListener("resize", resizeWheel);
+
+function indexAt(a){
+  const n = options.length, rel = (((-a) % 360) + 360) % 360;
+  return Math.min(n - 1, Math.floor(rel / (360 / n)));
+}
+
+function drawWheel(){
+  if (!W) return;
+  ctx.clearRect(0, 0, W, H);
+  const cx = W / 2 - 3, cy = H / 2 - 3, r = Math.min(W, H) / 2 - 34;
+  if (r <= 0) return;
+  const n = options.length, sweep = 360 / n, rad = Math.PI / 180;
+  const ink = theme.ink;
+  // hard offset shadow, then the studded rim
+  ctx.beginPath(); ctx.arc(cx + 7, cy + 7, r + 14, 0, 7); ctx.fillStyle = ink; ctx.fill();
+  ctx.beginPath(); ctx.arc(cx, cy, r + 14, 0, 7); ctx.fillStyle = ink; ctx.fill();
+  ctx.fillStyle = theme.paper;
+  for (let i = 0; i < 24; i++){
+    const a = (i / 24) * Math.PI * 2;
+    ctx.beginPath(); ctx.arc(cx + Math.cos(a) * (r + 7), cy + Math.sin(a) * (r + 7), 2.6, 0, 7); ctx.fill();
+  }
+  ctx.font = `900 ${n > 14 ? 10 : n > 10 ? 12 : n > 6 ? 14 : 16}px "Arial Black","Helvetica Neue",system-ui,sans-serif`;
+  ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  const maxW = r * 0.64;
+  for (let i = 0; i < n; i++){
+    const start = (angle + i * sweep - 90) * rad, end = start + sweep * rad;
+    ctx.globalAlpha = win >= 0 && i !== win ? 0.3 : 1;
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, start, end); ctx.closePath();
+    ctx.fillStyle = sliceColor(i, n); ctx.fill();
+    ctx.strokeStyle = ink; ctx.lineWidth = i === win ? 5 : 3; ctx.lineJoin = "round"; ctx.stroke();
+    ctx.save();
+    ctx.translate(cx, cy); ctx.rotate(start + (sweep * rad) / 2);
+    let label = options[i].toUpperCase();
+    while (label.length > 1 && ctx.measureText(label).width > maxW) label = label.slice(0, -1);
+    if (label !== options[i].toUpperCase()) label = label.slice(0, -1) + "…";
+    ctx.fillStyle = "#141414";
+    ctx.fillText(label, r - 16, 0);
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+  // hub
+  ctx.beginPath(); ctx.arc(cx, cy, 30, 0, 7); ctx.fillStyle = "#FFD60A"; ctx.fill();
+  ctx.lineWidth = 4; ctx.strokeStyle = ink; ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, cy, 8, 0, 7); ctx.fillStyle = "#141414"; ctx.fill();
+  // pointer
+  ctx.beginPath(); ctx.moveTo(cx, cy - r + 16); ctx.lineTo(cx - 17, cy - r - 30); ctx.lineTo(cx + 17, cy - r - 30); ctx.closePath();
+  ctx.fillStyle = "#FFD60A"; ctx.fill();
+  ctx.lineWidth = 4.5; ctx.strokeStyle = ink; ctx.lineJoin = "round"; ctx.stroke();
+}
+
+// cubic-bezier(0.12, 0.6, 0.1, 1): same ease-out as the Android app
+function bezier(x1, y1, x2, y2){
+  return (t) => {
+    let lo = 0, hi = 1, u = t;
+    for (let i = 0; i < 24; i++){
+      u = (lo + hi) / 2;
+      const x = 3 * (1 - u) ** 2 * u * x1 + 3 * (1 - u) * u * u * x2 + u ** 3;
+      x < t ? (lo = u) : (hi = u);
+    }
+    return 3 * (1 - u) ** 2 * u * y1 + 3 * (1 - u) * u * u * y2 + u ** 3;
+  };
+}
+const ease = bezier(0.12, 0.6, 0.1, 1);
+
+function paintRestore(){
+  const b = $("restoreBtn");
+  b.hidden = removed.length === 0;
+  b.textContent = "↺ Restore (" + removed.length + ")";
+}
+
+// The winner is removed 1.6 s after a spin. If the next action comes sooner, remove it right away.
+let pendingRemoval = null;
+function cancelRemoval(){
+  if (pendingRemoval){ clearTimeout(pendingRemoval.timer); pendingRemoval = null; }
+}
+function flushRemoval(){
+  if (!pendingRemoval) return;
+  const winner = pendingRemoval.winner;
+  cancelRemoval();
+  if (options.length <= 2 || !options.includes(winner)) return;
+  removed.push(winner); store.set("removed", removed);
+  applyOptions(options.filter((o) => o !== winner), true);
+  paintRestore(); toast("Removed “" + winner + "”");
+}
+
+function spin(){
+  if (spinning) return;
+  flushRemoval();
+  if (options.length < 2) return;
+  spinning = true; win = -1;
+  $("spinBtn").disabled = true;
+  $("wheelResult").textContent = "Spinning…";
+  sfx.whoosh();
+  const from = angle, to = from + 360 * rnd(5, 8) + Math.random() * 360, dur = (4200 + Math.random() * 1300) * speed, t0 = performance.now();
+  const frame = (now) => {
+    const t = Math.min(1, (now - t0) / dur);
+    angle = from + (to - from) * ease(t);
+    const idx = indexAt(angle);
+    if (idx !== lastIdx){ lastIdx = idx; buzz(8); sfx.tick(); }
+    drawWheel();
+    if (t < 1) return requestAnimationFrame(frame);
+    angle %= 360; spinning = false; $("spinBtn").disabled = false;
+    win = indexAt(angle);
+    const winner = options[win];
+    drawWheel();
+    $("wheelResult").textContent = "🎉 " + winner; popAnim($("wheelResult"));
+    buzz(40); sfx.win();
+    const r = canvas.getBoundingClientRect(); confetti(r.left + r.width / 2, r.top + r.height / 2);
+    history.add("🎡", winner);
+    if ($("rmChk").checked && options.length > 2){
+      pendingRemoval = { winner, timer: setTimeout(flushRemoval, 1600) };
+    }
+  };
+  requestAnimationFrame(frame);
+}
+$("spinBtn").onclick = spin;
+canvas.onclick = spin;
+canvas.onkeydown = (e) => { if (e.key === " " || e.key === "Enter"){ e.preventDefault(); spin(); } };
+
+function applyOptions(list, keepText){
+  if (!keepText) cancelRemoval();
+  options = list; lastIdx = -1; win = -1;
+  if (!keepText) $("wheelResult").textContent = "Tap SPIN to decide";
+  store.set("options", list); drawWheel();
+}
+$("rmChk").checked = store.get("rm", false);
+$("rmChk").onchange = () => store.set("rm", $("rmChk").checked);
+$("restoreBtn").onclick = () => {
+  if (spinning) return;
+  flushRemoval();
+  applyOptions([...options, ...removed].slice(0, 24));
+  removed = []; store.set("removed", removed); paintRestore();
+};
+$("editBtn").onclick = () => { if (spinning) return; flushRemoval(); $("optInput").value = options.join("\n"); $("editDlg").showModal(); };
+$("editCancel").onclick = () => $("editDlg").close();
+$("shuffleBtn").onclick = () => {
+  const l = $("optInput").value.split("\n").map((s) => s.trim()).filter(Boolean);
+  for (let i = l.length - 1; i > 0; i--){ const j = rnd(0, i); [l[i], l[j]] = [l[j], l[i]]; }
+  $("optInput").value = l.join("\n");
+};
+$("editSave").onclick = () => {
+  const list = [...new Set($("optInput").value.split("\n").map((s) => s.trim()).filter(Boolean))].slice(0, 24);
+  if (list.length < 2) return toast("Add at least 2 options");
+  removed = []; store.set("removed", removed); paintRestore();
+  applyOptions(list); $("editDlg").close();
+};
+$("presetsBtn").onclick = () => { $("editDlg").close(); $("presetDlg").showModal(); };
+$("presetClose").onclick = () => $("presetDlg").close();
+Object.keys(PRESETS).forEach((name) => {
+  const b = document.createElement("button"); b.textContent = name;
+  b.onclick = () => { removed = []; store.set("removed", removed); paintRestore(); applyOptions(PRESETS[name]); $("presetDlg").close(); };
+  $("presetList").appendChild(b);
+});
+paintRestore();
+
+/* ---------------- coin ---------------- */
+let flipping = false;
+function updateCoinStats(){
+  const h = store.get("heads", 0), t = store.get("tails", 0), total = h + t;
+  $("coinStats").textContent = `Heads ${h}  ·  Tails ${t}`;
+  $("coinBar").firstElementChild.style.width = (total ? (h / total) * 100 : 50) + "%";
+}
+// A real 3D coin: two engraved faces plus a stack of rim layers for thickness.
+function wedge(cx, cy, r, a0, a1){
+  const p = (a) => [cx + r * Math.cos(a * Math.PI / 180), cy + r * Math.sin(a * Math.PI / 180)];
+  const [x0, y0] = p(a0), [x1, y1] = p(a1);
+  return `M${cx},${cy} L${x0.toFixed(1)},${y0.toFixed(1)} A${r},${r} 0 0 1 ${x1.toFixed(1)},${y1.toFixed(1)} Z`;
+}
+function coinFace(kind){
+  const word = kind === "heads" ? "HEADS" : "TAILS";
+  let emblem;
+  if (kind === "heads"){
+    emblem = `<polygon transform="translate(100 102) scale(1.3) translate(-100 -100)" fill="url(#cRaised)" stroke="#a86a00" stroke-width="1.4" stroke-linejoin="round"
+      points="100,64 108.8,87.9 134.2,88.9 114.3,104.6 121.2,129.1 100,115 78.8,129.1 85.7,104.6 65.8,88.9 91.2,87.9"/>`;
+  } else {
+    let w = "";
+    for (let i = 0; i < 8; i++){
+      w += `<path d="${wedge(100, 102, 44, i * 45 - 90, (i + 1) * 45 - 90)}" fill="${i % 2 ? "#d9960a" : "url(#cRaised)"}" stroke="#a86a00" stroke-width="1.2"/>`;
+    }
+    emblem = `${w}<circle cx="100" cy="102" r="44" fill="none" stroke="#a86a00" stroke-width="3"/>
+      <circle cx="100" cy="102" r="9" fill="#a86a00"/><circle cx="100" cy="102" r="3.5" fill="#f6d36a"/>`;
+  }
+  const font = 'font-family="system-ui,Segoe UI,Roboto,sans-serif" font-weight="800" fill="#8a5200"';
+  return `<svg viewBox="0 0 200 200" aria-hidden="true">
+    <circle cx="100" cy="100" r="100" fill="url(#cGold)"/>
+    <circle cx="100" cy="100" r="95" fill="none" stroke="url(#cEdge)" stroke-width="4"/>
+    <circle cx="100" cy="100" r="86" fill="none" stroke="#fff9" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="0.1 15.26"/>
+    <circle cx="100" cy="100" r="77" fill="url(#cField)" stroke="#b27200" stroke-width="2"/>
+    <g filter="url(#cEmboss)">${emblem}
+      <text ${font} font-size="16" letter-spacing="4" text-anchor="middle"><textPath href="#arcTop" startOffset="50%">${word}</textPath></text>
+      <text ${font} font-size="10.5" letter-spacing="3.5" text-anchor="middle"><textPath href="#arcBot" startOffset="50%">WHIMSY</textPath></text>
+    </g></svg><div class="shine"></div>`;
+}
+(function buildCoin(){
+  const coin = $("coin");
+  coin.querySelector(".front").innerHTML = coinFace("heads");
+  coin.querySelector(".back").innerHTML = coinFace("tails");
+  for (let z = -5; z <= 5; z++){
+    const rim = document.createElement("div");
+    rim.className = "rim"; rim.style.transform = `translateZ(${z}px)`;
+    coin.insertBefore(rim, coin.firstChild);
+  }
+})();
+// The coin can be flipped again at any moment: the new flip takes over from where the coin is now.
+// Only the flip that finishes counts in the stats and history.
+let flipId = 0, coinAngle = 0, coinY = 0, coinTilt = 0;
+function flipCoin(){
+  const id = ++flipId;
+  flipping = true;
+  const coin = $("coin"), shadow = $("coinShadow"), heads = Math.random() < 0.5;
+  const startA = coinAngle, startY = coinY, startT = coinTilt, want = heads ? 0 : 180;
+  const end = startA + rnd(4, 6) * 360 + ((((want - startA) % 360) + 360) % 360);
+  const dur = 1500 * speed, rise = 120, t0 = performance.now();
+  const easeOut = (t) => 1 - Math.pow(1 - t, 2.3);
+  sfx.whoosh();
+  const frame = (now) => {
+    if (id !== flipId) return; // a newer flip has taken over
+    const t = Math.min(1, (now - t0) / dur), f = easeOut(t), a = startA + (end - startA) * f;
+    const y = startY * (1 - f) - Math.sin(Math.PI * f) * rise;
+    const tilt = startT * (1 - f) + Math.sin(Math.PI * f) * 20;
+    const lift = Math.max(0, Math.min(1, -y / rise));
+    coinAngle = a; coinY = y; coinTilt = tilt;
+    coin.style.transform = `translateY(${y}px) rotateX(${tilt}deg) rotateY(${a}deg)`;
+    coin.style.setProperty("--sx", ((((a % 360) + 360) % 360) / 360 * 260 - 30) + "%");
+    shadow.style.transform = `scale(${1 - 0.4 * lift})`; shadow.style.opacity = 1 - 0.5 * lift;
+    if (t < 1) return requestAnimationFrame(frame);
+    coinAngle = want; coinY = 0; coinTilt = 0;
+    coin.style.transform = `rotateY(${want}deg)`;
+    shadow.style.transform = ""; shadow.style.opacity = "";
+    coin.setAttribute("aria-label", `Coin shows ${heads ? "heads" : "tails"}. Press to flip.`);
+    const key = heads ? "heads" : "tails"; store.set(key, store.get(key, 0) + 1);
+    updateCoinStats(); buzz(40); sfx.clink();
+    const r = coin.getBoundingClientRect(); confetti(r.left + r.width / 2, r.top + r.height / 2);
+    history.add("🪙", heads ? "HEADS" : "TAILS");
+    flipping = false;
+  };
+  requestAnimationFrame(frame);
+}
+$("flipBtn").onclick = flipCoin;
+$("coin").onclick = flipCoin;
+$("coin").onkeydown = (e) => { if (e.key === " " || e.key === "Enter"){ e.preventDefault(); flipCoin(); } };
+
+/* ---------------- dice ---------------- */
+const PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
+let dieSides = 6, diceCount = 2, rolling = false;
+function makeSeg(el, items, current, onPick){
+  items.forEach(([label, value]) => {
+    const b = document.createElement("button"); b.textContent = label;
+    b.classList.toggle("on", value === current);
+    b.onclick = () => { el.querySelectorAll("button").forEach((x) => x.classList.remove("on")); b.classList.add("on"); onPick(value); };
+    el.appendChild(b);
+  });
+}
+makeSeg($("diceType"), [4, 6, 8, 12, 20].map((n) => ["d" + n, n]), 6, (v) => { dieSides = v; resetDice(); });
+makeSeg($("diceCount"), [["1 die", 1], ["2", 2], ["3", 3], ["4", 4]], 2, (v) => { diceCount = v; resetDice(); });
+
+function renderDice(values){
+  const row = $("diceRow"); row.innerHTML = "";
+  const size = Math.max(56, Math.min(88, (Math.min(innerWidth, 480) - 32) / values.length - 12));
+  values.forEach((v) => {
+    const d = document.createElement("div"); d.className = "die";
+    d.style.width = d.style.height = size + "px";
+    if (dieSides === 6 && v >= 1){
+      d.classList.add("pips");
+      for (let i = 0; i < 9; i++){
+        const cell = document.createElement("span");
+        if (PIPS[v].includes(i)) cell.className = "pip";
+        d.appendChild(cell);
+      }
+      d.setAttribute("aria-label", String(v));
+    } else d.textContent = v === 0 ? "?" : v;
+    row.appendChild(d);
+  });
+}
+function resetDice(){ if (rolling) return; renderDice(Array(diceCount).fill(0)); $("diceTotal").textContent = ""; }
+function rollDice(){
+  if (rolling) return;
+  rolling = true; $("diceTotal").textContent = "";
+  const fin = Array.from({ length: diceCount }, () => rnd(1, dieSides));
+  let tick = 0;
+  const step = () => {
+    tick++;
+    if (tick <= 10){
+      renderDice(Array.from({ length: diceCount }, () => rnd(1, dieSides)));
+      $("diceRow").querySelectorAll(".die").forEach((d) => d.style.transform = `rotate(${rnd(-14, 14)}deg)`);
+      buzz(8); sfx.rattle(); setTimeout(step, (55 + tick * 14) * speed);
+    } else {
+      renderDice(fin);
+      $("diceRow").querySelectorAll(".die").forEach(popAnim);
+      const sum = fin.reduce((a, b) => a + b, 0);
+      if (diceCount > 1) $("diceTotal").textContent = "Total: " + sum;
+      buzz(40); sfx.thud();
+      history.add("🎲", `${diceCount}d${dieSides}: ${fin.join(" + ")} = ${sum}`);
+      rolling = false;
+    }
+  };
+  step();
+}
+$("rollBtn").onclick = rollDice;
+addEventListener("resize", () => { if (!rolling && !$("diceTotal").textContent) resetDice(); });
+
+/* ---------------- start ---------------- */
+updateCoinStats(); resetDice();
+const saved = store.get("tab", "wheel");
+selectTab(["wheel", "coin", "dice"].includes(saved) ? saved : "wheel");
+resizeWheel();
+
+if ("serviceWorker" in navigator){
+  addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "name": "Whimsy Wheel",
+  "short_name": "Whimsy",
+  "description": "Decision wheel, coin flip and dice roller.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFF4D8",
+  "theme_color": "#FFD60A",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
